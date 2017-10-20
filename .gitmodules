@@ -1,0 +1,3 @@
+[submodule "UnetHlpaiManager"]
+	path = UnetHlpaiManager
+	url = https://github.com/insthync/unet-hlapi-manager.git
