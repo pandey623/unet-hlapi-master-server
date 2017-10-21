@@ -23,14 +23,14 @@ public class MasterServerMessages
     // -------------- masterserver to client Ids --------------
     public const short RegisteredHostId = MsgType.Highest + 4;
     public const short UnregisteredHostId = MsgType.Highest + 5;
-    public const short ListOfHostsId = MsgType.Highest + 6;
+    public const short ResponseListOfHostsId = MsgType.Highest + 6;
 
 
     // -------------- client to server messages --------------
     public class RegisterHostMessage : MessageBase
     {
-        public string title;
         public string gameType;
+        public string title;
         public string password;
         public int hostPort;
         public int playerLimit;
@@ -51,7 +51,7 @@ public class MasterServerMessages
     public class RegisteredHostMessage : MessageBase
     {
         public short resultCode;
-        public string roomId;
+        public RegisteredMasterServerRoom registeredRoom;
     }
 
     public class UnregisteredHostMessage : MessageBase

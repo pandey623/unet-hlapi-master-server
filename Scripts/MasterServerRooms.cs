@@ -7,13 +7,20 @@ public class MasterServerRooms {
     public string gameType;
     private readonly Dictionary<string, MasterServerRoom> rooms = new Dictionary<string, MasterServerRoom>();
 
-    public bool AddRoom(string roomId, MasterServerRoom room)
+    public bool AddRoom(string roomId, MasterServerRoom room, out RegisteredMasterServerRoom registeredRoom)
     {
+        registeredRoom = RegisteredMasterServerRoom.Empty;
         if (rooms.ContainsKey(roomId))
             return false;
         room.roomId = roomId;
         room.gameType = gameType;
         rooms[roomId] = room;
+        registeredRoom = new RegisteredMasterServerRoom();
+        registeredRoom.roomId = room.roomId;
+        registeredRoom.gameType = room.gameType;
+        registeredRoom.title = room.title;
+        registeredRoom.passwordProtected = !string.IsNullOrEmpty(room.password);
+        registeredRoom.playerLimit = room.playerLimit;
         return true;
     }
 
