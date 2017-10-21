@@ -8,10 +8,9 @@ public class MasterServerMessages
     public enum ResultCodes : short
     {
         RegistrationFailed,                     // Registration failed because an empty game name was given.
-        RegistrationFailedNoServer,             // Registration failed because no server is running.
         RegistrationSucceeded,                  // Registration to master server succeeded, received confirmation.
         UnregistrationFailedNoRegisteredRoom,   // Unregistration to master server failed, no registered room.
-        UnregistrationFailedConnectionMismatch, // Unregistration to master server failed, no registered room.
+        UnregistrationFailedConnectionMismatch, // Unregistration to master server failed, connection mismatch.
         UnregistrationSucceeded,                // Unregistration to master server succeeded, received confirmation.
     }
 
@@ -59,7 +58,7 @@ public class MasterServerMessages
         public short resultCode;
     }
 
-    public class ListOfHostsMessage : MessageBase
+    public class ResponseListOfHostsMessage : MessageBase
     {
         public RegisteredMasterServerRoom[] hosts;
     }

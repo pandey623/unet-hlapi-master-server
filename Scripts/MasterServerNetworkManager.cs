@@ -12,7 +12,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public string spawningBuildPathForEditor = "";
     public System.Action<MasterServerMessages.RegisteredHostMessage> onRegisteredHost;
     public System.Action<MasterServerMessages.UnregisteredHostMessage> onUnregisteredHost;
-    public System.Action<MasterServerMessages.ListOfHostsMessage> onResponseListOfHosts;
+    public System.Action<MasterServerMessages.ResponseListOfHostsMessage> onResponseListOfHosts;
     /// <summary>
     /// Registered room, use at client as reference to do something.
     /// </summary>
@@ -147,7 +147,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     {
         if (writeLog) Debug.Log("[" + name + "] OnServerListHosts");
         var msg = netMsg.ReadMessage<MasterServerMessages.RequestHostListMessage>();
-        var response = new MasterServerMessages.ListOfHostsMessage();
+        var response = new MasterServerMessages.ResponseListOfHostsMessage();
         response.hosts = new RegisteredMasterServerRoom[0];
         if (gameTypeRooms.ContainsKey(msg.gameType))
         {
@@ -217,7 +217,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
     protected void OnClientResponseListOfHosts(NetworkMessage netMsg)
     {
-        var msg = netMsg.ReadMessage<MasterServerMessages.ListOfHostsMessage>();
+        var msg = netMsg.ReadMessage<MasterServerMessages.ResponseListOfHostsMessage>();
         if (onResponseListOfHosts != null)
             onResponseListOfHosts(msg);
     }
