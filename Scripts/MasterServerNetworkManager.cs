@@ -174,6 +174,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
             NetworkConnection spawnerConnection;
             if (!string.IsNullOrEmpty(msg.spawnToken) && spawners.TryGetValue(msg.spawnToken, out spawnerConnection))
             {
+                spawners.Remove(msg.spawnToken);
                 var spawnResponse = new MasterServerMessages.SpawnedGameServerMessage();
                 spawnResponse.resultCode = (short)MasterServerMessages.ResultCodes.SpawnSucceeded;
                 spawnResponse.room = newRoom;
@@ -260,6 +261,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         process.StartInfo.FileName = spawnPath;
         process.StartInfo.Arguments = arguments;
         process.Start();
+
+        spawners.Add(spawnToken, netMsg.conn);
     }
 
     protected void OnServerRequestConnectionInfo(NetworkMessage netMsg)
