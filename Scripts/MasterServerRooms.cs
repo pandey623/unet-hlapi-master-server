@@ -12,8 +12,7 @@ public class MasterServerRooms {
         registeredRoom = RegisteredMasterServerRoom.Empty;
         if (rooms.ContainsKey(roomId))
             return false;
-        room.roomId = roomId;
-        room.gameType = gameType;
+
         rooms[roomId] = room;
         registeredRoom = new RegisteredMasterServerRoom();
         registeredRoom.roomId = room.roomId;

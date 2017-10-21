@@ -22,11 +22,15 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public System.Action<MasterServerMessages.RegisteredGameServerMessage> onRegisteredHost;
     public System.Action<MasterServerMessages.UnregisteredGameServerMessage> onUnregisteredHost;
     public System.Action<MasterServerMessages.ResponseGameServerListMessage> onResponseGameServerList;
+    public System.Action<MasterServerMessages.SpawnedGameServerMessage> onSpawnedGameServer;
+    public System.Action<MasterServerMessages.ResponseConnectionInfoMessage> onResponseConnectionInfo;
+    protected string spawnToken;
     /// <summary>
     /// Registered room, use at client as reference to do something.
     /// </summary>
     protected RegisteredMasterServerRoom registeredRoom = RegisteredMasterServerRoom.Empty;
     protected readonly Dictionary<string, MasterServerRooms> gameTypeRooms = new Dictionary<string, MasterServerRooms>();
+    protected readonly Dictionary<string, NetworkConnection> spawners = new Dictionary<string, NetworkConnection>();
 
     protected virtual void Awake()
     {
@@ -44,6 +48,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         var args = System.Environment.GetCommandLineArgs();
         var gameNetworkManager = NetworkManager.singleton;
         var startGameServer = false;
+        spawnToken = "";
         gameServerGameType = DefaultGameType;
         gameServerTitle = "";
         gameServerPassword = "";
@@ -58,6 +63,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
                 startGameServer = true;
             if (arg == "-registerKey " && i + 1 < args.Length)
                 registerKey = args[i + 1];
+            if (arg == "-spawnToken " && i + 1 < args.Length)
+                spawnToken = args[i + 1];
             if (arg == "-gameServerGameType" && i + 1 < args.Length)
                 gameServerGameType = args[i + 1];
             if (arg == "-gameServerTitle" && i + 1 < args.Length)
@@ -85,6 +92,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         server.RegisterHandler(MasterServerMessages.RegisterGameServerId, OnServerRegisterGameServer);
         server.RegisterHandler(MasterServerMessages.UnregisterGameServerId, OnServerUnregisterGameServer);
         server.RegisterHandler(MasterServerMessages.RequestGameServerListId, OnServerRequestGameServerList);
+        server.RegisterHandler(MasterServerMessages.SpawnGameServerId, OnServerSpawnGameServer);
+        server.RegisterHandler(MasterServerMessages.RequestConnectionInfoId, OnServerRequestConnectionInfo);
     }
 
     protected override void RegisterClientMessages(NetworkClient client)
@@ -93,6 +102,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         client.RegisterHandler(MasterServerMessages.RegisteredGameServerId, OnClientRegisteredGameServer);
         client.RegisterHandler(MasterServerMessages.UnregisteredGameServerId, OnClientUnregisteredGameServer);
         client.RegisterHandler(MasterServerMessages.ResponseGameServerListId, OnClientResponseGameServerList);
+        server.RegisterHandler(MasterServerMessages.SpawnedGameServerId, OnClientSpawnedGameServer);
+        server.RegisterHandler(MasterServerMessages.ResponseConnectionInfoId, OnClientResponseConnectionInfo);
     }
 
     #region Server Helpers
@@ -133,7 +144,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
     protected void OnServerRegisterGameServer(NetworkMessage netMsg)
     {
-        if (writeLog) Debug.Log("[" + name + "] OnServerRegisterHost");
+        if (writeLog) Debug.Log("[" + name + "] OnServerRegisterGameServer");
         var msg = netMsg.ReadMessage<MasterServerMessages.RegisterGameServerMessage>();
         var response = new MasterServerMessages.RegisteredGameServerMessage();
         var gameType = string.IsNullOrEmpty(msg.gameType) ? DefaultGameType : msg.gameType;
@@ -141,10 +152,12 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         var roomId = System.Guid.NewGuid().ToString();
         var newRoom = new MasterServerRoom();
 
+        newRoom.roomId = roomId;
+        newRoom.gameType = gameType;
         newRoom.title = msg.title;
         newRoom.password = msg.password;
         newRoom.scene = msg.scene;
-        newRoom.hostIp = netMsg.conn.address;
+        newRoom.networkAddress = netMsg.conn.address;
         newRoom.networkPort = msg.networkPort;
         newRoom.maxConnections = msg.maxConnections;
         newRoom.connectionId = netMsg.conn.connectionId;
@@ -155,7 +168,18 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         else if (!rooms.AddRoom(roomId, newRoom, out registeredRoom))
             response.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationFailedCannotCreateRoom;
         else
+        {
             response.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationSucceeded;
+
+            NetworkConnection spawnerConnection;
+            if (!string.IsNullOrEmpty(msg.spawnToken) && spawners.TryGetValue(msg.spawnToken, out spawnerConnection))
+            {
+                var spawnResponse = new MasterServerMessages.SpawnedGameServerMessage();
+                spawnResponse.resultCode = (short)MasterServerMessages.ResultCodes.SpawnSucceeded;
+                spawnResponse.room = newRoom;
+                spawnerConnection.Send(MasterServerMessages.SpawnedGameServerId, spawnResponse);
+            }
+        }
 
         response.registeredRoom = registeredRoom;
 
@@ -164,7 +188,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
     protected void OnServerUnregisterGameServer(NetworkMessage netMsg)
     {
-        if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterHost");
+        if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterGameServer");
         var msg = netMsg.ReadMessage<MasterServerMessages.UnregisterGameServerMessage>();
         var response = new MasterServerMessages.UnregisteredGameServerMessage();
 
@@ -174,12 +198,12 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
         if (!rooms.TryGetRoom(msg.roomId, out room))
         {
-            if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterHost game not found: " + msg.roomId);
+            if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterGameServer room not found: " + msg.roomId);
             response.resultCode = (short)MasterServerMessages.ResultCodes.UnregistrationFailedNoRegisteredRoom;
         }
         else if (room.connectionId != netMsg.conn.connectionId)
         {
-            if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterHost connection mismatch: " + room.connectionId + " != " + netMsg.conn.connectionId);
+            if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterGameServer connection mismatch: " + room.connectionId + " != " + netMsg.conn.connectionId);
             response.resultCode = (short)MasterServerMessages.ResultCodes.UnregistrationFailedNoRegisteredRoom;
         }
         else
@@ -193,7 +217,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
     protected void OnServerRequestGameServerList(NetworkMessage netMsg)
     {
-        if (writeLog) Debug.Log("[" + name + "] OnServerListHosts");
+        if (writeLog) Debug.Log("[" + name + "] OnServerRequestGameServerList");
         var msg = netMsg.ReadMessage<MasterServerMessages.RequestGameServerListMessage>();
         var response = new MasterServerMessages.ResponseGameServerListMessage();
         response.hosts = new RegisteredMasterServerRoom[0];
@@ -204,14 +228,77 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         }
         netMsg.conn.Send(MasterServerMessages.ResponseGameServerListId, response);
     }
+
+    protected void OnServerSpawnGameServer(NetworkMessage netMsg)
+    {
+        if (writeLog) Debug.Log("[" + name + "] OnServerSpawnGameServer");
+        var msg = netMsg.ReadMessage<MasterServerMessages.SpawnGameServerMessage>();
+
+        if (!msg.registerKey.Equals(registerKey))
+        {
+            var spawnResponse = new MasterServerMessages.SpawnedGameServerMessage();
+            spawnResponse.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationFailedInvalidKey;
+            spawnResponse.room = MasterServerRoom.Empty;
+            netMsg.conn.Send(MasterServerMessages.SpawnedGameServerId, spawnResponse);
+            return;
+        }
+        
+        var spawnToken = System.Guid.NewGuid().ToString();
+        var arguments = "";
+        arguments += " -startGameServer";
+        arguments += " -registerKey " + registerKey;
+        arguments += " -spawnToken " + spawnToken;
+        arguments += " -gameServerGameType " + msg.gameType;
+        arguments += " -gameServerTitle " + msg.title;
+        arguments += " -gameServerPassword " + msg.title;
+        arguments += " -gameServerScene " + msg.scene;
+        arguments += " -gameServerNetworkPort " + msg.networkPort;
+        arguments += " -gameServerMaxConnections " + msg.maxConnections;
+
+        var spawnPath = Application.isEditor ? spawningBuildPathForEditor : spawningBuildPath;
+        var process = new System.Diagnostics.Process();
+        process.StartInfo.FileName = spawnPath;
+        process.StartInfo.Arguments = arguments;
+        process.Start();
+    }
+
+    protected void OnServerRequestConnectionInfo(NetworkMessage netMsg)
+    {
+        if (writeLog) Debug.Log("[" + name + "] OnServerRequestConnectionInfo");
+        var msg = netMsg.ReadMessage<MasterServerMessages.RequestConnectionInfoMessage>();
+        var response = new MasterServerMessages.ResponseConnectionInfoMessage();
+
+        // find the room
+        var rooms = EnsureRoomsForGameType(msg.gameType);
+        var room = MasterServerRoom.Empty;
+
+        if (!rooms.TryGetRoom(msg.roomId, out room))
+        {
+            if (writeLog) Debug.Log("[" + name + "] OnServerRequestConnectionInfo room not found: " + msg.roomId);
+            response.resultCode = (short)MasterServerMessages.ResultCodes.RequestConnectionInfoFailedNoRegisteredRoom;
+        }
+        else if (!room.password.Equals(msg.password))
+        {
+            if (writeLog) Debug.Log("[" + name + "] OnServerRequestConnectionInfo invalid password");
+            response.resultCode = (short)MasterServerMessages.ResultCodes.RequestConnectionInfoFailedInvalidPassword;
+        }
+        else
+        {
+            response.resultCode = (short)MasterServerMessages.ResultCodes.RequestConnectionInfoSucceed;
+            response.networkAddress = room.networkAddress;
+            response.networkPort = room.networkPort;
+        }
+
+        netMsg.conn.Send(MasterServerMessages.ResponseConnectionInfoId, response);
+    }
     #endregion
 
-    #region Client Functions
-    public void RegisterHost(string gameType, string title, string password, string scene, int networkPort, int maxConnections)
+    #region Gameserver Functions
+    public void RegisterGameServer(string gameType, string title, string password, string scene, int networkPort, int maxConnections)
     {
         if (!IsClientActive())
         {
-            Debug.LogError("["+name+"] Cannot RegisterHost, client not connected.");
+            Debug.LogError("["+name+ "] Cannot RegisterGameServer, client not connected.");
             return;
         }
 
@@ -221,6 +308,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         gameNetworkManager.onlineScene = scene;
 
         var msg = new MasterServerMessages.RegisterGameServerMessage();
+        msg.spawnToken = spawnToken;
         msg.registerKey = registerKey;
         msg.gameType = gameType;
         msg.title = title;
@@ -231,22 +319,22 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         client.Send(MasterServerMessages.RegisterGameServerId, msg);
     }
 
-    public void RegisterHost(string gameType, string title, string password = "")
+    public void RegisterGameServer(string gameType, string title, string password = "")
     {
         var gameNetworkManager = NetworkManager.singleton;
-        RegisterHost(gameType, title, password, gameNetworkManager.onlineScene, gameNetworkManager.networkPort, gameNetworkManager.maxConnections);
+        RegisterGameServer(gameType, title, password, gameNetworkManager.onlineScene, gameNetworkManager.networkPort, gameNetworkManager.maxConnections);
     }
 
-    public void RegisterHost()
+    public void RegisterGameServer()
     {
-        RegisterHost(gameServerGameType, gameServerTitle, gameServerPassword, gameServerScene, gameServerNetworkPort, gameServerMaxConnections);
+        RegisterGameServer(gameServerGameType, gameServerTitle, gameServerPassword, gameServerScene, gameServerNetworkPort, gameServerMaxConnections);
     }
 
-    public void UnregisterHost()
+    public void UnregisterGameServer()
     {
         if (registeredRoom.Equals(RegisteredMasterServerRoom.Empty))
         {
-            Debug.LogError("[" + name + "] Cannot UnregisterHost, registered room is empty.");
+            Debug.LogError("[" + name + "] Cannot UnregisterGameServer, registered room is empty.");
             return;
         }
         var msg = new MasterServerMessages.UnregisterGameServerMessage();
@@ -256,12 +344,12 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     }
     #endregion
 
-    #region Client Handlers
+    #region Gameserver Handlers
     public override void OnClientConnect(NetworkConnection conn)
     {
         base.OnClientConnect(conn);
         if (registerServerOnConnect)
-            RegisterHost();
+            RegisterGameServer();
     }
 
     protected void OnClientRegisteredGameServer(NetworkMessage netMsg)
@@ -294,6 +382,20 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         var msg = netMsg.ReadMessage<MasterServerMessages.ResponseGameServerListMessage>();
         if (onResponseGameServerList != null)
             onResponseGameServerList(msg);
+    }
+
+    protected void OnClientSpawnedGameServer(NetworkMessage netMsg)
+    {
+        var msg = netMsg.ReadMessage<MasterServerMessages.SpawnedGameServerMessage>();
+        if (onSpawnedGameServer != null)
+            onSpawnedGameServer(msg);
+    }
+
+    protected void OnClientResponseConnectionInfo(NetworkMessage netMsg)
+    {
+        var msg = netMsg.ReadMessage<MasterServerMessages.ResponseConnectionInfoMessage>();
+        if (onResponseConnectionInfo != null)
+            onResponseConnectionInfo(msg);
     }
     #endregion
 }

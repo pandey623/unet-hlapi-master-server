@@ -11,7 +11,7 @@ public struct MasterServerRoom
     public string title;
     public string password;
     public string scene;
-    public string hostIp;
+    public string networkAddress;
     public int networkPort;
     public int maxConnections;
     public int connectionId;
