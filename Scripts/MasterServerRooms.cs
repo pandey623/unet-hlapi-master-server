@@ -19,6 +19,7 @@ public class MasterServerRooms {
         registeredRoom.roomId = room.roomId;
         registeredRoom.gameType = room.gameType;
         registeredRoom.title = room.title;
+        registeredRoom.scene = room.scene;
         registeredRoom.passwordProtected = !string.IsNullOrEmpty(room.password);
         registeredRoom.maxConnections = room.maxConnections;
         return true;
@@ -56,6 +57,7 @@ public class MasterServerRooms {
             registeredRoom.roomId = room.roomId;
             registeredRoom.gameType = room.gameType;
             registeredRoom.title = room.title;
+            registeredRoom.scene = room.scene;
             registeredRoom.passwordProtected = !string.IsNullOrEmpty(room.password);
             registeredRoom.maxConnections = room.maxConnections;
             result[i] = registeredRoom;

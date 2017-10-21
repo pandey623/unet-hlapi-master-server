@@ -33,6 +33,7 @@ public class MasterServerMessages
         public string gameType;
         public string title;
         public string password;
+        public string scene;
         public int networkPort;
         public int maxConnections;
     }

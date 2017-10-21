@@ -13,6 +13,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public string gameServerGameType = DefaultGameType;
     public string gameServerTitle;
     public string gameServerPassword;
+    public string gameServerScene;
     public int gameServerNetworkPort;
     public int gameServerMaxConnections;
     public bool spawningAsBatch;
@@ -46,8 +47,10 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         gameServerGameType = DefaultGameType;
         gameServerTitle = "";
         gameServerPassword = "";
+        gameServerScene = gameNetworkManager.onlineScene;
         gameServerNetworkPort = gameNetworkManager.networkPort;
         gameServerMaxConnections = gameNetworkManager.maxConnections;
+        gameServerScene = gameNetworkManager.onlineScene;
         for (int i = 0; i < args.Length; i++)
         {
             var arg = args[i];
@@ -55,15 +58,17 @@ public class MasterServerNetworkManager : NetworkManagerSimple
                 startGameServer = true;
             if (arg == "-registerKey " && i + 1 < args.Length)
                 registerKey = args[i + 1];
-            if (arg == "-hostGameType" && i + 1 < args.Length)
+            if (arg == "-gameServerGameType" && i + 1 < args.Length)
                 gameServerGameType = args[i + 1];
-            if (arg == "-hostTitle" && i + 1 < args.Length)
+            if (arg == "-gameServerTitle" && i + 1 < args.Length)
                 gameServerTitle = args[i + 1];
-            if (arg == "-hostPassword" && i + 1 < args.Length)
+            if (arg == "-gameServerPassword" && i + 1 < args.Length)
                 gameServerPassword = args[i + 1];
-            if (arg == "-hostNetworkPort" && i + 1 < args.Length)
+            if (arg == "-gameServerScene" && i + 1 < args.Length)
+                gameServerScene = args[i + 1];
+            if (arg == "-gameServerNetworkPort" && i + 1 < args.Length)
                 gameServerNetworkPort = int.Parse(args[i + 1]);
-            if (arg == "-hostMaxConnections" && i + 1 < args.Length)
+            if (arg == "-gameServerMaxConnections" && i + 1 < args.Length)
                 gameServerMaxConnections = int.Parse(args[i + 1]);
         }
         if (startGameServer)
@@ -138,6 +143,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
         newRoom.title = msg.title;
         newRoom.password = msg.password;
+        newRoom.scene = msg.scene;
         newRoom.hostIp = netMsg.conn.address;
         newRoom.networkPort = msg.networkPort;
         newRoom.maxConnections = msg.maxConnections;
@@ -201,7 +207,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     #endregion
 
     #region Client Functions
-    public void RegisterHost(string gameType, string title, string password, int networkPort, int maxConnections)
+    public void RegisterHost(string gameType, string title, string password, string scene, int networkPort, int maxConnections)
     {
         if (!IsClientActive())
         {
@@ -212,12 +218,14 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         var gameNetworkManager = NetworkManager.singleton;
         gameNetworkManager.networkPort = networkPort;
         gameNetworkManager.maxConnections = maxConnections;
+        gameNetworkManager.onlineScene = scene;
 
         var msg = new MasterServerMessages.RegisterGameServerMessage();
         msg.registerKey = registerKey;
         msg.gameType = gameType;
         msg.title = title;
         msg.password = password;
+        msg.scene = scene;
         msg.networkPort = networkPort;
         msg.maxConnections = maxConnections;
         client.Send(MasterServerMessages.RegisterGameServerId, msg);
@@ -226,12 +234,12 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public void RegisterHost(string gameType, string title, string password = "")
     {
         var gameNetworkManager = NetworkManager.singleton;
-        RegisterHost(gameType, title, password, gameNetworkManager.networkPort, gameNetworkManager.maxConnections);
+        RegisterHost(gameType, title, password, gameNetworkManager.onlineScene, gameNetworkManager.networkPort, gameNetworkManager.maxConnections);
     }
 
     public void RegisterHost()
     {
-        RegisterHost(gameServerGameType, gameServerTitle, gameServerPassword, gameServerNetworkPort, gameServerMaxConnections);
+        RegisterHost(gameServerGameType, gameServerTitle, gameServerPassword, gameServerScene, gameServerNetworkPort, gameServerMaxConnections);
     }
 
     public void UnregisterHost()

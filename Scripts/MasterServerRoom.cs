@@ -10,6 +10,7 @@ public struct MasterServerRoom
     public string gameType;
     public string title;
     public string password;
+    public string scene;
     public string hostIp;
     public int networkPort;
     public int maxConnections;
@@ -23,6 +24,7 @@ public struct RegisteredMasterServerRoom
     public string roomId;
     public string gameType;
     public string title;
+    public string scene;
     public bool passwordProtected;
     public int maxConnections;
 }
