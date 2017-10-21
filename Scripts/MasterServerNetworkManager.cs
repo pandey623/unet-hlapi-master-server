@@ -20,7 +20,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public string spawningBuildPathForEditor = "";
     public System.Action<MasterServerMessages.RegisteredGameServerMessage> onRegisteredHost;
     public System.Action<MasterServerMessages.UnregisteredGameServerMessage> onUnregisteredHost;
-    public System.Action<MasterServerMessages.ResponseGameServerListMessage> onResponseListOfHosts;
+    public System.Action<MasterServerMessages.ResponseGameServerListMessage> onResponseGameServerList;
     /// <summary>
     /// Registered room, use at client as reference to do something.
     /// </summary>
@@ -51,9 +51,9 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         for (int i = 0; i < args.Length; i++)
         {
             var arg = args[i];
-            if (arg == "-startHost")
+            if (arg == "-startGameServer")
                 startGameServer = true;
-            if (arg == "-registrationKey" && i + 1 < args.Length)
+            if (arg == "-registerKey " && i + 1 < args.Length)
                 registerKey = args[i + 1];
             if (arg == "-hostGameType" && i + 1 < args.Length)
                 gameServerGameType = args[i + 1];
@@ -284,8 +284,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     protected void OnClientResponseGameServerList(NetworkMessage netMsg)
     {
         var msg = netMsg.ReadMessage<MasterServerMessages.ResponseGameServerListMessage>();
-        if (onResponseListOfHosts != null)
-            onResponseListOfHosts(msg);
+        if (onResponseGameServerList != null)
+            onResponseGameServerList(msg);
     }
     #endregion
 }
