@@ -7,7 +7,8 @@ public class MasterServerMessages
 {
     public enum ResultCodes : short
     {
-        RegistrationFailed,                     // Registration failed because an empty game name was given.
+        RegistrationFailedInvalidKey,           // Registration failed because register key is invalid.
+        RegistrationFailedCannotCreateRoom,     // Registration failed because an empty game name was given.
         RegistrationSucceeded,                  // Registration to master server succeeded, received confirmation.
         UnregistrationFailedNoRegisteredRoom,   // Unregistration to master server failed, no registered room.
         UnregistrationFailedConnectionMismatch, // Unregistration to master server failed, connection mismatch.
@@ -28,6 +29,7 @@ public class MasterServerMessages
     // -------------- client to server messages --------------
     public class RegisterHostMessage : MessageBase
     {
+        public string registerKey;
         public string gameType;
         public string title;
         public string password;

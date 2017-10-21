@@ -7,6 +7,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 {
     public const string DefaultGameType = "Default";
     public MasterServerNetworkManager Singleton { get; protected set; }
+    public string registerKey = "";
     public bool autoRegisterToMasterServer;
     public bool startGameServerAsHost;
     public string gameServerGameType = DefaultGameType;
@@ -14,7 +15,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public string gameServerPassword;
     public int gameServerNetworkPort;
     public int gameServerMaxConnections;
-    public string serverRegisterationKey = "";
+    public bool spawningAsBatch;
     public string spawningBuildPath = "";
     public string spawningBuildPathForEditor = "";
     public System.Action<MasterServerMessages.RegisteredHostMessage> onRegisteredHost;
@@ -52,6 +53,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
             var arg = args[i];
             if (arg == "-startHost")
                 startGameServer = true;
+            if (arg == "-registrationKey" && i + 1 < args.Length)
+                registerKey = args[i + 1];
             if (arg == "-hostGameType" && i + 1 < args.Length)
                 gameServerGameType = args[i + 1];
             if (arg == "-hostTitle" && i + 1 < args.Length)
@@ -141,16 +144,14 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         newRoom.connectionId = netMsg.conn.connectionId;
 
         var registeredRoom = RegisteredMasterServerRoom.Empty;
-        if (!rooms.AddRoom(roomId, newRoom, out registeredRoom))
-        {
-            response.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationFailed;
-            response.registeredRoom = registeredRoom;
-        }
+        if (!msg.registerKey.Equals(registerKey))
+            response.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationFailedInvalidKey;
+        else if (!rooms.AddRoom(roomId, newRoom, out registeredRoom))
+            response.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationFailedCannotCreateRoom;
         else
-        {
             response.resultCode = (short)MasterServerMessages.ResultCodes.RegistrationSucceeded;
-            response.registeredRoom = registeredRoom;
-        }
+
+        response.registeredRoom = registeredRoom;
 
         netMsg.conn.Send(MasterServerMessages.RegisteredHostId, response);
     }
@@ -213,6 +214,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         gameNetworkManager.maxConnections = maxConnections;
 
         var msg = new MasterServerMessages.RegisterHostMessage();
+        msg.registerKey = registerKey;
         msg.gameType = gameType;
         msg.title = title;
         msg.password = password;
