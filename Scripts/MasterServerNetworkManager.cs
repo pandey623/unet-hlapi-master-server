@@ -18,9 +18,9 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public bool spawningAsBatch;
     public string spawningBuildPath = "";
     public string spawningBuildPathForEditor = "";
-    public System.Action<MasterServerMessages.RegisteredHostMessage> onRegisteredHost;
-    public System.Action<MasterServerMessages.UnregisteredHostMessage> onUnregisteredHost;
-    public System.Action<MasterServerMessages.ResponseListOfHostsMessage> onResponseListOfHosts;
+    public System.Action<MasterServerMessages.RegisteredGameServerMessage> onRegisteredHost;
+    public System.Action<MasterServerMessages.UnregisteredGameServerMessage> onUnregisteredHost;
+    public System.Action<MasterServerMessages.ResponseGameServerListMessage> onResponseListOfHosts;
     /// <summary>
     /// Registered room, use at client as reference to do something.
     /// </summary>
@@ -77,17 +77,17 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     protected override void RegisterServerMessages()
     {
         base.RegisterServerMessages();
-        server.RegisterHandler(MasterServerMessages.RegisterHostId, OnServerRegisterHost);
-        server.RegisterHandler(MasterServerMessages.UnregisterHostId, OnServerUnregisterHost);
-        server.RegisterHandler(MasterServerMessages.RequestListOfHostsId, OnServerRequestListOfHosts);
+        server.RegisterHandler(MasterServerMessages.RegisterGameServerId, OnServerRegisterGameServer);
+        server.RegisterHandler(MasterServerMessages.UnregisterGameServerId, OnServerUnregisterGameServer);
+        server.RegisterHandler(MasterServerMessages.RequestGameServerListId, OnServerRequestGameServerList);
     }
 
     protected override void RegisterClientMessages(NetworkClient client)
     {
         base.RegisterClientMessages(client);
-        client.RegisterHandler(MasterServerMessages.RegisteredHostId, OnClientRegisteredHost);
-        client.RegisterHandler(MasterServerMessages.UnregisteredHostId, OnClientUnregisteredHost);
-        client.RegisterHandler(MasterServerMessages.ResponseListOfHostsId, OnClientResponseListOfHosts);
+        client.RegisterHandler(MasterServerMessages.RegisteredGameServerId, OnClientRegisteredGameServer);
+        client.RegisterHandler(MasterServerMessages.UnregisteredGameServerId, OnClientUnregisteredGameServer);
+        client.RegisterHandler(MasterServerMessages.ResponseGameServerListId, OnClientResponseGameServerList);
     }
 
     #region Server Helpers
@@ -126,11 +126,11 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         }
     }
 
-    protected void OnServerRegisterHost(NetworkMessage netMsg)
+    protected void OnServerRegisterGameServer(NetworkMessage netMsg)
     {
         if (writeLog) Debug.Log("[" + name + "] OnServerRegisterHost");
-        var msg = netMsg.ReadMessage<MasterServerMessages.RegisterHostMessage>();
-        var response = new MasterServerMessages.RegisteredHostMessage();
+        var msg = netMsg.ReadMessage<MasterServerMessages.RegisterGameServerMessage>();
+        var response = new MasterServerMessages.RegisteredGameServerMessage();
         var gameType = string.IsNullOrEmpty(msg.gameType) ? DefaultGameType : msg.gameType;
         var rooms = EnsureRoomsForGameType(gameType);
         var roomId = System.Guid.NewGuid().ToString();
@@ -153,14 +153,14 @@ public class MasterServerNetworkManager : NetworkManagerSimple
 
         response.registeredRoom = registeredRoom;
 
-        netMsg.conn.Send(MasterServerMessages.RegisteredHostId, response);
+        netMsg.conn.Send(MasterServerMessages.RegisteredGameServerId, response);
     }
 
-    protected void OnServerUnregisterHost(NetworkMessage netMsg)
+    protected void OnServerUnregisterGameServer(NetworkMessage netMsg)
     {
         if (writeLog) Debug.Log("[" + name + "] OnServerUnregisterHost");
-        var msg = netMsg.ReadMessage<MasterServerMessages.UnregisterHostMessage>();
-        var response = new MasterServerMessages.UnregisteredHostMessage();
+        var msg = netMsg.ReadMessage<MasterServerMessages.UnregisterGameServerMessage>();
+        var response = new MasterServerMessages.UnregisteredGameServerMessage();
 
         // find the room
         var rooms = EnsureRoomsForGameType(msg.gameType);
@@ -182,21 +182,21 @@ public class MasterServerNetworkManager : NetworkManagerSimple
             response.resultCode = (short)MasterServerMessages.ResultCodes.UnregistrationSucceeded;
         }
 
-        netMsg.conn.Send(MasterServerMessages.UnregisteredHostId, response);
+        netMsg.conn.Send(MasterServerMessages.UnregisteredGameServerId, response);
     }
 
-    protected void OnServerRequestListOfHosts(NetworkMessage netMsg)
+    protected void OnServerRequestGameServerList(NetworkMessage netMsg)
     {
         if (writeLog) Debug.Log("[" + name + "] OnServerListHosts");
-        var msg = netMsg.ReadMessage<MasterServerMessages.RequestHostListMessage>();
-        var response = new MasterServerMessages.ResponseListOfHostsMessage();
+        var msg = netMsg.ReadMessage<MasterServerMessages.RequestGameServerListMessage>();
+        var response = new MasterServerMessages.ResponseGameServerListMessage();
         response.hosts = new RegisteredMasterServerRoom[0];
         if (gameTypeRooms.ContainsKey(msg.gameType))
         {
             var rooms = gameTypeRooms[msg.gameType];
             response.hosts = rooms.GetRegisteredRooms();
         }
-        netMsg.conn.Send(MasterServerMessages.ResponseListOfHostsId, response);
+        netMsg.conn.Send(MasterServerMessages.ResponseGameServerListId, response);
     }
     #endregion
 
@@ -213,14 +213,14 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         gameNetworkManager.networkPort = networkPort;
         gameNetworkManager.maxConnections = maxConnections;
 
-        var msg = new MasterServerMessages.RegisterHostMessage();
+        var msg = new MasterServerMessages.RegisterGameServerMessage();
         msg.registerKey = registerKey;
         msg.gameType = gameType;
         msg.title = title;
         msg.password = password;
         msg.networkPort = networkPort;
         msg.maxConnections = maxConnections;
-        client.Send(MasterServerMessages.RegisterHostId, msg);
+        client.Send(MasterServerMessages.RegisterGameServerId, msg);
     }
 
     public void RegisterHost(string gameType, string title, string password = "")
@@ -241,10 +241,10 @@ public class MasterServerNetworkManager : NetworkManagerSimple
             Debug.LogError("[" + name + "] Cannot UnregisterHost, registered room is empty.");
             return;
         }
-        var msg = new MasterServerMessages.UnregisterHostMessage();
+        var msg = new MasterServerMessages.UnregisterGameServerMessage();
         msg.roomId = registeredRoom.roomId;
         msg.gameType = registeredRoom.gameType;
-        client.Send(MasterServerMessages.UnregisterHostId, msg);
+        client.Send(MasterServerMessages.UnregisterGameServerId, msg);
     }
     #endregion
 
@@ -256,9 +256,9 @@ public class MasterServerNetworkManager : NetworkManagerSimple
             RegisterHost();
     }
 
-    protected void OnClientRegisteredHost(NetworkMessage netMsg)
+    protected void OnClientRegisteredGameServer(NetworkMessage netMsg)
     {
-        var msg = netMsg.ReadMessage<MasterServerMessages.RegisteredHostMessage>();
+        var msg = netMsg.ReadMessage<MasterServerMessages.RegisteredGameServerMessage>();
         if (msg.resultCode == (short)MasterServerMessages.ResultCodes.RegistrationSucceeded)
         {
             registeredRoom = msg.registeredRoom;
@@ -272,18 +272,18 @@ public class MasterServerNetworkManager : NetworkManagerSimple
             onRegisteredHost(msg);
     }
 
-    protected void OnClientUnregisteredHost(NetworkMessage netMsg)
+    protected void OnClientUnregisteredGameServer(NetworkMessage netMsg)
     {
-        var msg = netMsg.ReadMessage<MasterServerMessages.UnregisteredHostMessage>();
+        var msg = netMsg.ReadMessage<MasterServerMessages.UnregisteredGameServerMessage>();
         if (msg.resultCode == (short)MasterServerMessages.ResultCodes.UnregistrationSucceeded)
             registeredRoom = RegisteredMasterServerRoom.Empty;
         if (onUnregisteredHost != null)
             onUnregisteredHost(msg);
     }
 
-    protected void OnClientResponseListOfHosts(NetworkMessage netMsg)
+    protected void OnClientResponseGameServerList(NetworkMessage netMsg)
     {
-        var msg = netMsg.ReadMessage<MasterServerMessages.ResponseListOfHostsMessage>();
+        var msg = netMsg.ReadMessage<MasterServerMessages.ResponseGameServerListMessage>();
         if (onResponseListOfHosts != null)
             onResponseListOfHosts(msg);
     }

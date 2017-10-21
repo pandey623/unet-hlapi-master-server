@@ -16,18 +16,18 @@ public class MasterServerMessages
     }
 
     // -------------- client to masterserver Ids --------------
-    public const short RegisterHostId = MsgType.Highest + 1;
-    public const short UnregisterHostId = MsgType.Highest + 2;
-    public const short RequestListOfHostsId = MsgType.Highest + 3;
+    public const short RegisterGameServerId = MsgType.Highest + 1;
+    public const short UnregisterGameServerId = MsgType.Highest + 2;
+    public const short RequestGameServerListId = MsgType.Highest + 3;
 
     // -------------- masterserver to client Ids --------------
-    public const short RegisteredHostId = MsgType.Highest + 4;
-    public const short UnregisteredHostId = MsgType.Highest + 5;
-    public const short ResponseListOfHostsId = MsgType.Highest + 6;
+    public const short RegisteredGameServerId = MsgType.Highest + 4;
+    public const short UnregisteredGameServerId = MsgType.Highest + 5;
+    public const short ResponseGameServerListId = MsgType.Highest + 6;
 
 
     // -------------- client to server messages --------------
-    public class RegisterHostMessage : MessageBase
+    public class RegisterGameServerMessage : MessageBase
     {
         public string registerKey;
         public string gameType;
@@ -37,30 +37,30 @@ public class MasterServerMessages
         public int maxConnections;
     }
 
-    public class UnregisterHostMessage : MessageBase
+    public class UnregisterGameServerMessage : MessageBase
     {
         public string roomId;
         public string gameType;
     }
 
-    public class RequestHostListMessage : MessageBase
+    public class RequestGameServerListMessage : MessageBase
     {
         public string gameType;
     }
 
     // -------------- server to client messages --------------
-    public class RegisteredHostMessage : MessageBase
+    public class RegisteredGameServerMessage : MessageBase
     {
         public short resultCode;
         public RegisteredMasterServerRoom registeredRoom;
     }
 
-    public class UnregisteredHostMessage : MessageBase
+    public class UnregisteredGameServerMessage : MessageBase
     {
         public short resultCode;
     }
 
-    public class ResponseListOfHostsMessage : MessageBase
+    public class ResponseGameServerListMessage : MessageBase
     {
         public RegisteredMasterServerRoom[] hosts;
     }
