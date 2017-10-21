@@ -8,7 +8,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public const string DefaultGameType = "Default";
     public MasterServerNetworkManager Singleton { get; protected set; }
     public string registerKey = "";
-    public bool autoRegisterToMasterServer;
+    public bool registerServerOnConnect;
     public bool startGameServerAsHost;
     public string gameServerGameType = DefaultGameType;
     public string gameServerTitle;
@@ -68,7 +68,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         }
         if (startGameServer)
         {
-            autoRegisterToMasterServer = true;
+            registerServerOnConnect = true;
             startGameServerAsHost = false;
             StartClient();
         }
@@ -252,7 +252,7 @@ public class MasterServerNetworkManager : NetworkManagerSimple
     public override void OnClientConnect(NetworkConnection conn)
     {
         base.OnClientConnect(conn);
-        if (autoRegisterToMasterServer)
+        if (registerServerOnConnect)
             RegisterHost();
     }
 
