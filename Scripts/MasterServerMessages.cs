@@ -31,8 +31,8 @@ public class MasterServerMessages
         public string gameType;
         public string title;
         public string password;
-        public int hostPort;
-        public int playerLimit;
+        public int networkPort;
+        public int maxConnections;
     }
 
     public class UnregisterHostMessage : MessageBase

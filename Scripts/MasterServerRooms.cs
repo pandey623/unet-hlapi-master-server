@@ -20,7 +20,7 @@ public class MasterServerRooms {
         registeredRoom.gameType = room.gameType;
         registeredRoom.title = room.title;
         registeredRoom.passwordProtected = !string.IsNullOrEmpty(room.password);
-        registeredRoom.playerLimit = room.playerLimit;
+        registeredRoom.maxConnections = room.maxConnections;
         return true;
     }
 
@@ -57,7 +57,7 @@ public class MasterServerRooms {
             registeredRoom.gameType = room.gameType;
             registeredRoom.title = room.title;
             registeredRoom.passwordProtected = !string.IsNullOrEmpty(room.password);
-            registeredRoom.playerLimit = room.playerLimit;
+            registeredRoom.maxConnections = room.maxConnections;
             result[i] = registeredRoom;
             ++i;
         }
