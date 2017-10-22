@@ -255,6 +255,8 @@ public class MasterServerNetworkManager : NetworkManagerSimple
         arguments += " -gameServerScene " + msg.scene;
         arguments += " -gameServerNetworkPort " + msg.networkPort;
         arguments += " -gameServerMaxConnections " + msg.maxConnections;
+        if (spawningAsBatch)
+            arguments += " -batchmode";
 
         var spawnPath = Application.isEditor ? spawningBuildPathForEditor : spawningBuildPath;
         var process = new System.Diagnostics.Process();
